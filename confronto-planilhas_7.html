@@ -217,6 +217,28 @@
   footer.reset-row p{margin:0;font-size:11.5px;color:var(--ink-soft);}
   .save-indicator{font-size:11px;color:var(--ink-soft);font-style:italic;margin-top:6px;}
 
+  body.auth-loading .app, body:not(.is-authenticated) .app{display:none;}
+  body.is-authenticated .auth-shell{display:none;}
+  .auth-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--paper);}
+  .auth-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:26px;box-shadow:var(--shadow-md);}
+  .auth-card h2{font-family:var(--serif);font-size:24px;margin:0 0 6px;}
+  .auth-card p{margin:0 0 18px;color:var(--ink-soft);font-size:13px;}
+  .auth-field{display:grid;gap:6px;margin-bottom:12px;}
+  .auth-field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);}
+  .auth-field input,.auth-field select{font-family:var(--sans);font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink);}
+  .auth-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;}
+  .auth-status{min-height:20px;font-size:12px;color:var(--red);margin-top:12px;}
+  .top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+  .user-pill{font-size:12px;color:var(--ink-soft);background:var(--panel);border:1px solid var(--line);padding:6px 10px;border-radius:14px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .admin-panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px;margin:22px 0 8px;box-shadow:var(--shadow-sm);}
+  .admin-panel h2{font-family:var(--serif);font-size:18px;margin:0;}
+  .admin-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+  .admin-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:end;}
+  .admin-list{margin-top:16px;border-top:1px solid var(--line-soft);padding-top:12px;}
+  .admin-list-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px;}
+  .role-badge{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:#fff;background:var(--ink);padding:3px 7px;border-radius:3px;}
+  .muted-small{font-size:12px;color:var(--ink-soft);}
+
   /* Back to Top Button */
   #backToTop{position:fixed;bottom:28px;right:28px;width:44px;height:44px;border-radius:50%;background:var(--ink);color:#fff;border:none;font-size:20px;line-height:44px;text-align:center;cursor:pointer;box-shadow:var(--shadow-md);display:none;z-index:50;transition:background var(--transition-fast),box-shadow var(--transition-fast),transform var(--transition-fast);}
   #backToTop:hover{background:var(--amber);box-shadow:var(--shadow-lg);transform:translateY(-2px);}
@@ -233,14 +255,34 @@
     .panel-toolbar{flex-direction:column;align-items:flex-start;}
     .tabs{overflow-x:auto;flex-wrap:nowrap;}
     footer.reset-row{flex-direction:column;text-align:center;}
+    .admin-form{grid-template-columns:1fr;}
+    .admin-list-row{grid-template-columns:1fr;gap:4px;}
   }
 
   /* Focus-visible global */
   :focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
 </style>
 </head>
-<body>
+<body class="auth-loading">
 <a href="#main-content" class="skip-link">Pular para o conteúdo</a>
+<section class="auth-shell" aria-label="Acesso ao sistema">
+  <form class="auth-card" id="loginForm">
+    <h2>NEBRASCA AUDITOR</h2>
+    <p>Entre com seu e-mail e senha para acessar o sistema.</p>
+    <div class="auth-field">
+      <label for="loginEmail">E-mail</label>
+      <input type="email" id="loginEmail" autocomplete="email" required>
+    </div>
+    <div class="auth-field">
+      <label for="loginPassword">Senha</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" required>
+    </div>
+    <div class="auth-actions">
+      <button class="btn-primary" type="submit" id="loginBtn">Entrar</button>
+    </div>
+    <div class="auth-status" id="loginStatus" role="status" aria-live="polite"></div>
+  </form>
+</section>
 <div class="app" role="main">
 
   <header class="top">
@@ -251,8 +293,47 @@
         <h1>Conciliação de Entregas</h1>
       </div>
     </div>
+    <div class="top-actions">
+      <span class="user-pill" id="currentUserLabel">Sessão ativa</span>
+      <button class="btn-ghost hidden" id="toggleAdminPanel" type="button">Painel admin</button>
+      <button class="btn-ghost" id="logoutBtn" type="button">Sair</button>
+    </div>
     <p class="subtitle">Cruze duas ou mais bases (CSV ou XLSX) escolhendo quais colunas servem de chave em cada lado — mesmo quando os formatos não coincidem.</p>
   </header>
+
+  <section class="admin-panel hidden" id="adminPanel" aria-label="Painel administrativo">
+    <div class="admin-panel-head">
+      <div>
+        <h2>Controle de usuários</h2>
+        <div class="muted-small">Somente administradores podem criar acessos.</div>
+      </div>
+      <button class="btn-ghost" id="refreshUsersBtn" type="button">Atualizar</button>
+    </div>
+    <form class="admin-form" id="createUserForm">
+      <div class="auth-field">
+        <label for="newUserName">Nome</label>
+        <input type="text" id="newUserName" autocomplete="off">
+      </div>
+      <div class="auth-field">
+        <label for="newUserEmail">E-mail</label>
+        <input type="email" id="newUserEmail" autocomplete="off" required>
+      </div>
+      <div class="auth-field">
+        <label for="newUserPassword">Senha</label>
+        <input type="password" id="newUserPassword" autocomplete="new-password" minlength="8" required>
+      </div>
+      <div class="auth-field">
+        <label for="newUserRole">Perfil</label>
+        <select id="newUserRole">
+          <option value="user">Usuário</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="btn-primary" type="submit" id="createUserBtn">Criar</button>
+    </form>
+    <div class="auth-status" id="adminStatus" role="status" aria-live="polite"></div>
+    <div class="admin-list" id="adminUsersList"></div>
+  </section>
 
   <p class="example-note">
     <b>Exemplo:</b> a Planilha A tem <code>Código</code>, a Planilha B tem <code>Número do pedido 1</code> … <code>6</code>.
@@ -1418,6 +1499,151 @@ document.querySelectorAll('.save-indicator').forEach(function(el){
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', 'polite');
 });
+</script>
+<script type="module">
+import { AuthError, getUser, handleAuthCallback, login, logout } from 'https://esm.sh/@netlify/identity@1.2.0';
+
+const body = document.body;
+const loginForm = document.getElementById('loginForm');
+const loginStatus = document.getElementById('loginStatus');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const currentUserLabel = document.getElementById('currentUserLabel');
+const toggleAdminPanel = document.getElementById('toggleAdminPanel');
+const adminPanel = document.getElementById('adminPanel');
+const refreshUsersBtn = document.getElementById('refreshUsersBtn');
+const createUserForm = document.getElementById('createUserForm');
+const createUserBtn = document.getElementById('createUserBtn');
+const adminStatus = document.getElementById('adminStatus');
+const adminUsersList = document.getElementById('adminUsersList');
+
+let authUser = null;
+
+function userIsAdmin(user){
+  return user?.role === 'admin' || (Array.isArray(user?.roles) && user.roles.includes('admin'));
+}
+
+function setAuthState(user){
+  authUser = user;
+  body.classList.remove('auth-loading');
+  body.classList.toggle('is-authenticated', Boolean(user));
+  currentUserLabel.textContent = user?.email || 'Sessão ativa';
+  toggleAdminPanel.classList.toggle('hidden', !userIsAdmin(user));
+  adminPanel.classList.add('hidden');
+}
+
+function authMessage(error){
+  if (error instanceof AuthError) {
+    if (error.status === 401) return 'E-mail ou senha inválidos.';
+    if (error.status === 403) return 'Acesso não permitido para este usuário.';
+    return error.message || 'Não foi possível concluir a autenticação.';
+  }
+  return 'Não foi possível conectar ao serviço de autenticação.';
+}
+
+async function initializeAuth(){
+  try {
+    await handleAuthCallback();
+  } catch (error) {
+    loginStatus.textContent = authMessage(error);
+  }
+  setAuthState(await getUser());
+}
+
+async function loadAdminUsers(){
+  if (!userIsAdmin(authUser)) return;
+  adminStatus.textContent = 'Carregando usuários...';
+  adminUsersList.innerHTML = '';
+
+  try {
+    const response = await fetch('/api/admin/users', { credentials: 'include' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Falha ao carregar usuários.');
+
+    adminStatus.textContent = '';
+    if (!data.users.length) {
+      adminUsersList.innerHTML = '<div class="muted-small">Nenhum usuário encontrado.</div>';
+      return;
+    }
+
+    adminUsersList.innerHTML = data.users.map(user => {
+      const role = user.role === 'admin' || (user.roles || []).includes('admin') ? 'admin' : 'user';
+      const name = user.name ? `${escapeHtml(user.name)} · ` : '';
+      const confirmed = user.confirmedAt ? 'Confirmado' : 'Pendente';
+      return `<div class="admin-list-row">
+        <div><b>${name}${escapeHtml(user.email || '')}</b><div class="muted-small">${confirmed}</div></div>
+        <span class="role-badge">${role}</span>
+        <span class="muted-small">${user.lastSignInAt ? 'Último acesso registrado' : 'Sem acesso registrado'}</span>
+      </div>`;
+    }).join('');
+  } catch (error) {
+    adminStatus.textContent = error.message || 'Falha ao carregar usuários.';
+  }
+}
+
+loginForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  loginStatus.textContent = '';
+  loginBtn.disabled = true;
+
+  try {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const user = await login(email, password);
+    setAuthState(user);
+    loginForm.reset();
+  } catch (error) {
+    loginStatus.textContent = authMessage(error);
+  } finally {
+    loginBtn.disabled = false;
+  }
+});
+
+logoutBtn.addEventListener('click', async () => {
+  await logout();
+  setAuthState(null);
+});
+
+toggleAdminPanel.addEventListener('click', async () => {
+  adminPanel.classList.toggle('hidden');
+  if (!adminPanel.classList.contains('hidden')) await loadAdminUsers();
+});
+
+refreshUsersBtn.addEventListener('click', loadAdminUsers);
+
+createUserForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  adminStatus.textContent = '';
+  createUserBtn.disabled = true;
+
+  try {
+    const payload = {
+      name: document.getElementById('newUserName').value.trim(),
+      email: document.getElementById('newUserEmail').value.trim(),
+      password: document.getElementById('newUserPassword').value,
+      role: document.getElementById('newUserRole').value,
+    };
+
+    const response = await fetch('/api/admin/users', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Falha ao criar usuário.');
+
+    createUserForm.reset();
+    adminStatus.textContent = 'Usuário criado com sucesso.';
+    await loadAdminUsers();
+  } catch (error) {
+    adminStatus.textContent = error.message || 'Falha ao criar usuário.';
+  } finally {
+    createUserBtn.disabled = false;
+  }
+});
+
+initializeAuth();
 </script>
 </body>
 </html>
